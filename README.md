@@ -32,15 +32,13 @@ Requires Java 17 or later.
 
 Requests are authenticated with an API key, sent as a bearer token. To create one, sign in to the Stract app and go to **Account → API Keys**. Additional keys require a Team or Enterprise subscription.
 
-The generated client does not add the key for you. Create one `ApiClient` and attach the `Authorization` header with a request interceptor:
+Create one `ApiClient` with your API key:
 
 ```java
 import com.stractapi.client.ApiClient;
 
-String apiKey = System.getenv("STRACT_API_KEY");
-
-ApiClient client = new ApiClient()
-    .setRequestInterceptor(b -> b.header("Authorization", "Bearer " + apiKey));
+ApiClient client = new ApiClient();
+client.setBearerToken(System.getenv("STRACT_API_KEY"));
 ```
 
 Keep your API key out of source control. Load it from an environment variable or a secrets manager.
@@ -105,25 +103,32 @@ Field types: `STRING`, `BOOLEAN`, `NUMBER`, `DATE`, `DATETIME`, `ENUM`.
 
 ### 3. Extract data from text
 
-For synchronous jobs, capture the job ID so you can recover if the job doesn't finish in time. See [Handling `202` on synchronous jobs](#handling-202-on-synchronous-jobs) for the client setup this example assumes.
+For synchronous jobs, always use the `…Call` variant of the method and check the status before reading the result. See [Why use the `…Call` variant for synchronous jobs](#why-use-the-call-variant-for-synchronous-jobs).
 
 ```java
-try {
-    List<JobOutputRecord> records = jobs.uploadTextDocumentAndRunJob(
-        struct.getId(),
-        new SyncTextJobRequest()
-            .name("order-1042")
-            .text("Two hamburgers and a large fries")
-            .additionalInstructions("")
-            .outputType(SyncTextJobRequest.OutputTypeEnum.JSON));
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import okhttp3.Response;
 
-    for (JobOutputRecord record : records) {
-        System.out.println(record.getDocumentName());                          // order-1042
-        System.out.println(record.getAdditionalProperties().get("hamburgers")); // 2
+SyncTextJobRequest request = new SyncTextJobRequest()
+    .name("order-1042")
+    .text("Two hamburgers and a large fries")
+    .additionalInstructions("")
+    .outputType(SyncTextJobRequest.OutputTypeEnum.JSON);
+
+Type recordsType = new TypeToken<List<JobOutputRecord>>() {}.getType();
+
+try (Response res = jobs.uploadTextDocumentAndRunJobCall(struct.getId(), request, null).execute()) {
+    if (res.code() == 202) {
+        // Still running: save the job ID and fetch the output later.
+        String jobId = res.header("stract-job-id");
+    } else {
+        List<JobOutputRecord> records = client.handleResponse(res, recordsType);
+        for (JobOutputRecord record : records) {
+            System.out.println(record.getDocumentName());                           // order-1042
+            System.out.println(record.getAdditionalProperties().get("hamburgers")); // 2
+        }
     }
-} catch (ApiException e) {
-    String jobId = lastJobId.get(); // set when the response was a 202
-    // ...
 }
 ```
 
@@ -134,12 +139,19 @@ Each record has the document name plus one entry per field, available through `g
 ```java
 import java.io.File;
 
-List<JobOutputRecord> records = jobs.uploadDocumentProcessAndRunJob(
-    struct.getId(),
-    new File("invoice.pdf"),
-    "Focus on extracting financial figures only",
-    "json",
-    null); // llmModelId: null uses the default model
+try (Response res = jobs.uploadDocumentProcessAndRunJobCall(
+        struct.getId(),
+        new File("invoice.pdf"),
+        "Focus on extracting financial figures only",
+        "json",
+        null,   // llmModelId: null uses the default model
+        null).execute()) {
+    if (res.code() == 202) {
+        String jobId = res.header("stract-job-id");
+    } else {
+        List<JobOutputRecord> records = client.handleResponse(res, recordsType);
+    }
+}
 ```
 
 The API uses the file extension to decide how to process it.
@@ -157,24 +169,15 @@ Supported file types include PDF, images (PNG, JPEG, WebP, HEIC, TIFF, AVIF, BMP
 | Text request body | 10 MB |
 | Wait time before returning `202` | About 100 seconds |
 
-The generated synchronous methods parse the response as JSON records, so use `json` as the output type. To get CSV, run a batch job and call `getJobOutputCsv`.
+The examples above request JSON output. To get CSV, run a batch job and call `getJobOutputCsv`.
 
-### Handling `202` on synchronous jobs
+### Why use the `…Call` variant for synchronous jobs
 
-If a synchronous job takes longer than the wait time, the API responds with `202` and the job keeps running. The response body is then an error message rather than records, and the job ID is only in the `stract-job-id` header.
+Every endpoint has several methods: a plain one (`uploadTextDocumentAndRunJob`) that returns the parsed result, a `…WithHttpInfo` one that also returns the status code and headers, and a `…Call` one (`uploadTextDocumentAndRunJobCall`) that builds the request and lets you execute it yourself to get the raw OkHttp `Response`.
 
-The generated client tries to parse that body as records and throws an `ApiException` with code `0`, so the job ID is not available from the exception. To keep it, register a response interceptor on the client that records the header:
+If a synchronous job takes longer than the wait time, the API responds with `202` and the job keeps running. The response body is then an error message rather than records, and the job ID is only in the `stract-job-id` header. The plain and `…WithHttpInfo` methods treat `202` as success and try to parse the body as records, so the parse fails and you lose the job ID. The `…Call` variant lets you check `res.code()` first and read the job ID with `res.header("stract-job-id")`. Use it to poll the job and fetch its output, as shown below. Pass `null` for the final callback argument. Because it skips the generated null checks on required arguments, make sure those are set.
 
-```java
-ThreadLocal<String> lastJobId = new ThreadLocal<>();
-
-ApiClient client = new ApiClient()
-    .setRequestInterceptor(b -> b.header("Authorization", "Bearer " + apiKey))
-    .setResponseInterceptor(r ->
-        lastJobId.set(r.headers().firstValue("stract-job-id").orElse(null)));
-```
-
-After a failed synchronous call, read `lastJobId.get()` on the same thread, then poll the job and fetch its output as shown below. `200`, `202` and `422` responses from a synchronous job include `stract-document-id` and `stract-job-id` headers, so you can look up the document and job later.
+`200`, `202` and `422` responses from a synchronous job include `stract-document-id` and `stract-job-id` headers, so you can look up the document and job later.
 
 ### Batch jobs
 
@@ -251,7 +254,7 @@ List<AccountCreditLedger> ledger =
 
 ## Development
 
-This SDK is generated from the OpenAPI spec with [OpenAPI Generator](https://openapi-generator.tech) (the `java` generator, `native` library) through the Maven plugin. The spec is read from the live URL on every build, and the generated sources are written to `target/`. There is no hand-written source to edit, and nothing generated is committed.
+This SDK is generated from the OpenAPI spec with [OpenAPI Generator](https://openapi-generator.tech) (the `java` generator, `okhttp-gson` library) through the Maven plugin. The spec is read from the live URL on every build, and the generated sources are written to `target/`. There is no hand-written source to edit, and nothing generated is committed.
 
 Requirements: Java 17+ and Maven, plus network access to fetch the spec.
 
