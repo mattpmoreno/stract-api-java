@@ -16,14 +16,14 @@ Maven:
 <dependency>
   <groupId>com.stract-api</groupId>
   <artifactId>stract-api</artifactId>
-  <version>0.9.2</version>
+  <version>0.9.4</version>
 </dependency>
 ```
 
 Gradle:
 
 ```kotlin
-implementation("com.stract-api:stract-api:0.9.2")
+implementation("com.stract-api:stract-api:0.9.4")
 ```
 
 Requires Java 17 or later.
@@ -268,6 +268,39 @@ The smoke test (`SmokeIT`) reads `STRACT_API_KEY` from a `.env` file in the repo
 ```
 STRACT_API_KEY=your-api-key
 ```
+
+### Publishing a new version
+
+Releases go to [Maven Central](https://central.sonatype.com) as `com.stract-api:stract-api`. A published version can never be changed or deleted, so test before you deploy. All steps below use the **Maven** tool window in IntelliJ (View → Tool Windows → Maven).
+
+One-time setup, already done on the release machine:
+
+- The `com.stract-api` namespace is verified in the Central Portal.
+- A Central Portal user token is saved in `~/.m2/settings.xml` under a `<server>` with id `central`.
+- A GPG key exists and its public key is on a keyserver such as `keyserver.ubuntu.com`.
+
+Steps for each release:
+
+1. **Regenerate the SDK.** Under **Lifecycle**, select **clean** and **compile** (Ctrl+click both) and run
+2. **Set the version to match the API spec.**
+   - **Where to find it:** the spec downloaded in step 1, at `target/generated-sources/openapi/api/openapi.yaml`. Open it and read the `version:` value under the top-level `info:` section (around line 17). The same file is also served at [api.stract-api.com/spec/openapi.yaml](https://api.stract-api.com/spec/openapi.yaml).
+   - **What to update:**
+     - `<version>` in `pom.xml`, the project's own version near the top of the file (line 9, directly under `<artifactId>stract-api</artifactId>`). Leave the plugin and dependency versions alone.
+     - The `<version>` in the Maven snippet under **Installation** in this README.
+     - The version in the Gradle `implementation("com.stract-api:stract-api:…")` line under **Installation** in this README.
+     - The tag name in the tagging step below (`v` followed by the version).
+   - Then click **Reload All Maven Projects** in the Maven window.
+3. **Check the hand-written docs against the regenerated code.** The SDK itself is generated, but the README is not. Compare it with the new classes under `target/generated-sources/openapi/` and update anything that drifted:
+   - The **API groups** table: methods added, renamed or removed in the `*Api` classes.
+   - The code examples and the `…Call` section: method signatures, argument order, and model getters.
+   - The **Common statuses** table under Error handling, if the API's responses changed.
+   - The copyright year in `LICENSE`, once a year.
+4. **Run the smoke test.** With the `release` profile **unticked**, run **verify**. This needs `STRACT_API_KEY` in `.env`. Fix any failures before going on.
+5. **Dry-run the release build.** Under **Profiles**, tick **release**. Run **verify** again. This also builds the sources and javadoc jars and signs everything with GPG, but uploads nothing. A passphrase prompt appears from gpg's own window, which can open behind IntelliJ.
+6. **Deploy.** With **release** still ticked, run **deploy**. This repeats the build and the smoke test, then uploads a bundle to the Central Portal. To skip the smoke test, use a run configuration (Run → Edit Configurations → **+** → Maven) with the command line `deploy -DskipITs` and the `release` profile enabled.
+7. **Publish in the portal.** Sign in at [central.sonatype.com](https://central.sonatype.com), open **Deployments**, wait for the upload to show as validated, then click **Publish**.
+8. **Tag the release.** Commit the version bump, tag it (`v0.9.4` for version 0.9.4), and push the commit and the tag.
+9. **Confirm it's live.** The artifact usually appears at `repo1.maven.org/maven2/com/stract-api/stract-api/` within 15–30 minutes. Untick the `release` profile when you're done so later builds don't try to sign.
 
 ## Support
 
