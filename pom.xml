@@ -4,12 +4,34 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.stractapi</groupId>
+    <groupId>com.stract-api</groupId>
     <artifactId>stract-api</artifactId>
-    <version>0.9.2</version>
+    <version>0.9.4</version>
     <packaging>jar</packaging>
     <name>Stract API Java SDK</name>
     <description>Java SDK for Stract API, generated from its OpenAPI spec</description>
+    <url>https://github.com/mattpmoreno/stract-api-java</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Matt Moreno</name>
+            <email>matt@stract-api.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/mattpmoreno/stract-api-java.git</connection>
+        <developerConnection>scm:git:git@github.com:mattpmoreno/stract-api-java.git</developerConnection>
+        <url>https://github.com/mattpmoreno/stract-api-java</url>
+    </scm>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
@@ -99,6 +121,7 @@
                             <configOptions>
                                 <useJakartaEe>true</useJakartaEe>
                                 <openApiNullable>true</openApiNullable>
+                                <disallowAdditionalPropertiesIfNotPresent>false</disallowAdditionalPropertiesIfNotPresent>
                                 <dateLibrary>java8</dateLibrary>
                                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
                                 <sourceFolder>src/gen/java/main</sourceFolder>
@@ -122,4 +145,67 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Release artifacts for Maven Central: mvn -Prelease clean deploy -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.11.2</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
