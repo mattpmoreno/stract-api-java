@@ -299,7 +299,10 @@ Steps for each release:
 5. **Dry-run the release build.** Under **Profiles**, tick **release**. Run **verify** again. This also builds the sources and javadoc jars and signs everything with GPG, but uploads nothing. A passphrase prompt appears from gpg's own window, which can open behind IntelliJ.
 6. **Deploy.** With **release** still ticked, run **deploy**. This repeats the build and the smoke test, then uploads a bundle to the Central Portal. To skip the smoke test, use a run configuration (Run → Edit Configurations → **+** → Maven) with the command line `deploy -DskipITs` and the `release` profile enabled.
 7. **Publish in the portal.** Sign in at [central.sonatype.com](https://central.sonatype.com), open **Deployments**, wait for the upload to show as validated, then click **Publish**.
-8. **Tag the release.** Commit the version bump, tag it (`v0.9.4` for version 0.9.4), and push the commit and the tag.
+8. **Tag the release in git.**
+   - **Commit** the changes made for this release: the `pom.xml` version and the README edits (Git → Commit).
+   - **Tag** that commit with `v` followed by the version, for example `v0.9.4` (Git → New Tag…, enter the name, pick the commit).
+   - **Push** the commit and the tag (Git → Push, with **Push Tags** ticked). Tags are not pushed by default.
 9. **Confirm it's live.** The artifact usually appears at `repo1.maven.org/maven2/com/stract-api/stract-api/` within 15–30 minutes. Untick the `release` profile when you're done so later builds don't try to sign.
 
 ## Support
