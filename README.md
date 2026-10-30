@@ -14,7 +14,7 @@ Maven:
 
 ```xml
 <dependency>
-  <groupId>com.stractapi</groupId>
+  <groupId>com.stract-api</groupId>
   <artifactId>stract-api</artifactId>
   <version>0.9.2</version>
 </dependency>
@@ -23,7 +23,7 @@ Maven:
 Gradle:
 
 ```kotlin
-implementation("com.stractapi:stract-api:0.9.2")
+implementation("com.stract-api:stract-api:0.9.2")
 ```
 
 Requires Java 17 or later.
@@ -260,6 +260,13 @@ Requirements: Java 17+ and Maven, plus network access to fetch the spec.
 
 ```bash
 mvn clean package   # regenerate from the live spec and build the jar
+mvn verify          # also run the smoke test against the live API
+```
+
+The smoke test (`SmokeIT`) reads `STRACT_API_KEY` from a `.env` file in the repo root, falling back to the environment:
+
+```
+STRACT_API_KEY=your-api-key
 ```
 
 ## Support
