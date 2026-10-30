@@ -303,7 +303,7 @@ Steps for each release:
    ```
    git tag v0.9.4 && git push origin v0.9.4
    ```
-9. **Confirm it's live.** The artifact usually appears at `repo1.maven.org/maven2/com/stract-api/stract-api/` within 15–30 minutes. Untick the `release` profile when you're done so later builds don't try to sign.
+9. **Confirm it's live.** The artifact usually appears within 15–30 minutes. Check the package page at [central.sonatype.com/artifact/com.stract-api/stract-api](https://central.sonatype.com/artifact/com.stract-api/stract-api), which lists the published versions, or browse the raw files at `repo1.maven.org/maven2/com/stract-api/stract-api/`. Untick the `release` profile when you're done so later builds don't try to sign.
 
 ## Support
 
