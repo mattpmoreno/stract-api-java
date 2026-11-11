@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.stractapi.client.ApiClient;
 import com.stractapi.client.ApiException;
 import com.stractapi.model.User;
-import io.github.cdimascio.dotenv.Dotenv;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +20,7 @@ class SmokeIT {
 
     @BeforeAll
     static void setUp() {
-        // dotenv.get checks the process environment as well as .env.
-        String apiKey = Dotenv.configure().ignoreIfMissing().load().get("STRACT_API_KEY");
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException(
-                    "STRACT_API_KEY is not set. Add it to .env or your environment.");
-        }
-        client = clientWithKey(apiKey);
+        client = TestClient.create();
     }
 
     @Test
@@ -63,9 +56,7 @@ class SmokeIT {
     }
 
     private static ApiClient clientWithKey(String apiKey) {
-        ApiClient c = new ApiClient();
-        c.setBearerToken(apiKey);
-        return c;
+        return TestClient.createWithKey(apiKey);
     }
 
 }

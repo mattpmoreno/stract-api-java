@@ -59,12 +59,16 @@ final class TestClient {
     }
 
     static ApiClient create() {
+        return createWithKey(apiKey());
+    }
+
+    static ApiClient createWithKey(String key) {
         ApiClient c = new ApiClient();
         String baseUrl = baseUrl();
         if (baseUrl != null) {
             c.setBasePath(baseUrl);
         }
-        c.setBearerToken(apiKey());
+        c.setBearerToken(key);
         return c;
     }
 
