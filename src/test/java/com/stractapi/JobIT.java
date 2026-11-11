@@ -75,7 +75,7 @@ class JobIT {
                 "Three hamburgers and a soda").toFile();
         ApiResponse<List<JobOutputRecord>> res = new JobApi(client)
                 .uploadDocumentProcessAndRunJobWithHttpInfo(
-                        struct.getId(), file, "", "json", null);
+                        struct.getId(), file, "", "json", null, null);
 
         assertTrue(res.getStatusCode() == 200 || res.getStatusCode() == 202);
         assertTrue(res.getHeaders().containsKey("stract-job-id"));
