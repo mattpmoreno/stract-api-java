@@ -6,7 +6,7 @@
 
     <groupId>com.stract-api</groupId>
     <artifactId>stract-api</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
     <packaging>jar</packaging>
     <name>Stract API Java SDK</name>
     <description>Java SDK for Stract API, generated from its OpenAPI spec</description>
@@ -39,6 +39,11 @@
         <openapi-generator.version>7.26.0</openapi-generator.version>
         <okhttp.version>4.12.0</okhttp.version>
         <junit.version>5.11.4</junit.version>
+        <!-- STRACT_API_BASE_URL (where the spec is downloaded from) is deliberately NOT
+             defined here. Maven resolves any property it already knows while reading
+             the pom, before plugins run, so a default here would be baked into the
+             generator config and .env.build could never override it. The value comes
+             from build-defaults.properties and .env.build via the plugin below. -->
     </properties>
 
     <dependencies>
@@ -98,6 +103,29 @@
 
     <build>
         <plugins>
+            <!-- Loads .env.build (and only that file: .env holds the API key and is
+                 never read by Maven). Runs in initialize, before the generator. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>properties-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <execution>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>read-project-properties</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Later files override earlier ones. -->
+                            <files>
+                                <file>${project.basedir}/build-defaults.properties</file>
+                                <file>${project.basedir}/.env.build</file>
+                            </files>
+                            <quiet>true</quiet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
@@ -108,7 +136,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>https://api.stract-api.com/spec/openapi.yaml</inputSpec>
+                            <inputSpec>${STRACT_API_BASE_URL}/spec/openapi.yaml</inputSpec>
                             <generatorName>java</generatorName>
                             <library>okhttp-gson</library>
                             <apiPackage>com.stractapi</apiPackage>
