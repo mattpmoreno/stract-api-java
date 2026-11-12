@@ -300,10 +300,7 @@ One-time setup, already done on the release machine:
 
 Steps for each release:
 
-1. **Create a release branch.** In **Terminal**, from an up-to-date `main`, run the following, replacing `v0.9.5` with `v` plus the new version:
-   ```
-   git checkout main && git pull && git checkout -b release/v0.9.5
-   ```
+1. **Create a new branch.** Do the release work on a new branch rather than on `main`.
 2. **Regenerate the SDK.** Under **Lifecycle**, select **clean** and **compile** (Ctrl+click both) and run
 3. **Set the version to match the API spec.**
    - **Where to find it:** the spec downloaded in step 2, at `target/generated-sources/openapi/api/openapi.yaml`. Open it and read the `version:` value under the top-level `info:` section (around line 17). The same file is served at `$STRACT_API_BASE_URL/spec/openapi.yaml` (or [api.stract-api.com/spec/openapi.yaml](https://api.stract-api.com/spec/openapi.yaml) if you have no `.env.build`).
@@ -322,11 +319,7 @@ Steps for each release:
 6. **Dry-run the release build.** Under **Profiles**, tick **release**. Run **verify** again. This also builds the sources and javadoc jars and signs everything with GPG, but uploads nothing. A passphrase prompt appears from gpg's own window, which can open behind IntelliJ.
 7. **Deploy.** With **release** still ticked, run **deploy**. This repeats the build and the integration tests, then uploads a bundle to the Central Portal. To skip the tests, use a run configuration (Run → Edit Configurations → **+** → Maven) with the command line `deploy -DskipITs` and the `release` profile enabled.
 8. **Publish in the portal.** Sign in at [central.sonatype.com](https://central.sonatype.com), open **Deployments**, wait for the upload to show as validated, then click **Publish**.
-9. **Merge the branch into main.** Commit and push the release changes, then merge the release branch into `main`. In **Terminal** run the following, replacing `v0.9.5` with `v` plus the new version:
-   ```
-   git add -A && git commit -m "Release v0.9.5" && git push -u origin release/v0.9.5
-   git checkout main && git pull && git merge release/v0.9.5 && git push origin main
-   ```
+9. **Merge the branch into main.** Commit and push the release changes, then merge the new branch into `main`.
 10. **Tag the release in git.** Make sure you are on `main` (`git checkout main && git pull`), so the tag lands on the merged release commit. Then, in **Terminal** run
     the following, replacing `v0.9.5` with `v` plus the new version:
     ```
