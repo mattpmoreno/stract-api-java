@@ -6,7 +6,7 @@
 
     <groupId>com.stract-api</groupId>
     <artifactId>stract-api</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
     <packaging>jar</packaging>
     <name>Stract API Java SDK</name>
     <description>Java SDK for Stract API, generated from its OpenAPI spec</description>
