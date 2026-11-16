@@ -21,7 +21,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ class JobIT {
 
     private static ApiClient client;
     private static Struct struct;
+    private static final List<UUID> syncJobIds = new ArrayList<>();
 
     @TempDir
     Path tempDir;
@@ -45,7 +48,24 @@ class JobIT {
 
     @AfterAll
     static void tearDown() throws ApiException {
-        TestClient.archiveStructAndJobs(client, struct.getId());
+        try {
+            // The sync endpoints upload the document themselves, so nothing else owns it.
+            DocumentApi documents = new DocumentApi(client);
+            for (UUID jobId : syncJobIds) {
+                for (Document doc : documents.getDocumentsForJob(jobId)) {
+                    documents.deleteDocument(doc.getId());
+                }
+            }
+        } finally {
+            TestClient.archiveStructAndJobs(client, struct.getId());
+        }
+    }
+
+    private static void trackSyncJob(ApiResponse<?> res) {
+        List<String> ids = res.getHeaders().get("stract-job-id");
+        if (ids != null && !ids.isEmpty()) {
+            syncJobIds.add(UUID.fromString(ids.get(0)));
+        }
     }
 
     @Test
@@ -57,6 +77,7 @@ class JobIT {
                         .additionalInstructions("")
                         .outputType(SyncTextJobRequest.OutputTypeEnum.JSON));
 
+        trackSyncJob(res);
         assertTrue(res.getStatusCode() == 200 || res.getStatusCode() == 202);
         // Both statuses carry the job ID header.
         assertTrue(res.getHeaders().containsKey("stract-job-id"));
@@ -77,6 +98,7 @@ class JobIT {
                 .uploadDocumentProcessAndRunJobWithHttpInfo(
                         struct.getId(), file, "", "json", null, null);
 
+        trackSyncJob(res);
         assertTrue(res.getStatusCode() == 200 || res.getStatusCode() == 202);
         assertTrue(res.getHeaders().containsKey("stract-job-id"));
         assumeFalse(res.getStatusCode() == 202,
