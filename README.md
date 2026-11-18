@@ -16,14 +16,14 @@ Maven:
 <dependency>
   <groupId>com.stract-api</groupId>
   <artifactId>stract-api</artifactId>
-  <version>0.9.5</version>
+  <version>0.10.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```kotlin
-implementation("com.stract-api:stract-api:0.9.5")
+implementation("com.stract-api:stract-api:0.10.0")
 ```
 
 Requires Java 17 or later.
@@ -62,7 +62,7 @@ DocumentApi documents = new DocumentApi(client);
 | `FieldApi` | `createFields`, `getFields`, `editField`, `deleteField` |
 | `JobApi` | `uploadTextDocumentAndRunJob`, `uploadDocumentProcessAndRunJob`, `createJob`, `getJobById`, `getJobOutputJson`, `getJobOutputCsv`, `getStructJobs`, `getUserJobs`, `cancelJob`, `archiveJob` |
 | `JobDocumentApi` | `getJobDocuments`, `getJobDocumentOutput` |
-| `DocumentApi` | `uploadDocument`, `uploadDocumentNoCatalog`, `uploadTextDocument`, `uploadTextDocumentNoCatalog`, `getUserDocuments`, `getCatalogDocuments`, `getDocumentsForJob`, `getDocumentText`, `getDocumentLink`, `deleteDocument` |
+| `DocumentApi` | `uploadDocument`, `uploadDocumentNoCatalog`, `uploadTextDocument`, `uploadTextDocumentNoCatalog`, `uploadDocumentFromUrl`, `uploadDocumentFromUrlNoCatalog`, `getUserDocuments`, `getCatalogDocuments`, `getDocumentsForJob`, `getDocumentText`, `getDocumentLink`, `deleteDocument` |
 | `CatalogApi` | `createCatalog`, `getCatalogs`, `deleteCatalog` |
 | `LlmModelApi` | `getLlmModels` |
 | `CreditsApi` | `getCurrentCredits`, `getCurrentOrgCredits` |
@@ -311,21 +311,22 @@ Steps for each release:
      - The tag name in the tagging step below (`v` followed by the version).
    - Then click **Reload All Maven Projects** in the Maven window.
 4. **Check the hand-written docs against the regenerated code.** The SDK itself is generated, but the README is not. Compare it with the new classes under `target/generated-sources/openapi/` and update anything that drifted:
-   - The **API groups** table: methods added, renamed or removed in the `*Api` classes.
    - The code examples and the `…Call` section: method signatures, argument order, and model getters.
    - The **Common statuses** table under Error handling, if the API's responses changed.
    - The copyright year in `LICENSE`, once a year.
-5. **Run the integration tests.** With the `release` profile **unticked**, run **verify**. This needs `STRACT_API_KEY` in `.env`. Fix any failures before going on.
-6. **Dry-run the release build.** Under **Profiles**, tick **release**. Run **verify** again. This also builds the sources and javadoc jars and signs everything with GPG, but uploads nothing. A passphrase prompt appears from gpg's own window, which can open behind IntelliJ.
-7. **Deploy.** With **release** still ticked, run **deploy**. This repeats the build and the integration tests, then uploads a bundle to the Central Portal. To skip the tests, use a run configuration (Run → Edit Configurations → **+** → Maven) with the command line `deploy -DskipITs` and the `release` profile enabled.
-8. **Publish in the portal.** Sign in at [central.sonatype.com](https://central.sonatype.com), open **Deployments**, wait for the upload to show as validated, then click **Publish**.
-9. **Merge the branch into main.** Commit and push the release changes, then merge the new branch into `main`.
-10. **Tag the release in git.** Make sure you are on `main` (`git checkout main && git pull`), so the tag lands on the merged release commit. Then, in **Terminal** run
-    the following, replacing `v0.9.5` with `v` plus the new version:
+5. **Add new endpoints to the README table.** In the **API groups** table, add every new method from the `*Api` classes under `target/generated-sources/openapi/` to the row for its group (for example `DocumentApi`), and remove or rename any that no longer exist. List only the base method name, not its `…Call`, `…WithHttpInfo` or `…Async` variants. If a new endpoint belongs to a group with no row yet, add a row for it.
+6. **Create new tests for new endpoints.** If the API gained endpoints since the last release, add integration tests for them alongside the existing ones, covering at least a successful call and the main error cases. Compare the `*Api` classes under `target/generated-sources/openapi/` with the existing tests to spot endpoints that have none.
+7. **Run the integration tests.** With the `release` profile **unticked**, run **verify**. This needs `STRACT_API_KEY` in `.env`. Fix any failures before going on.
+8. **Dry-run the release build.** Under **Profiles**, tick **release**. Run **verify** again. This also builds the sources and javadoc jars and signs everything with GPG, but uploads nothing. A passphrase prompt appears from gpg's own window, which can open behind IntelliJ.
+9. **Deploy.** With **release** still ticked, run **deploy**. This repeats the build and the integration tests, then uploads a bundle to the Central Portal. To skip the tests, use a run configuration (Run → Edit Configurations → **+** → Maven) with the command line `deploy -DskipITs` and the `release` profile enabled.
+10. **Publish in the portal.** Sign in at [central.sonatype.com](https://central.sonatype.com), open **Deployments**, wait for the upload to show as validated, then click **Publish**.
+11. **Merge the branch into main.** Commit and push the release changes, then merge the new branch into `main`.
+12. **Tag the release in git.** Make sure you are on `main` (`git checkout main && git pull`), so the tag lands on the merged release commit. Then, in **Terminal** run
+    the following, replacing `v0.10.0` with `v` plus the new version:
     ```
-    git tag v0.9.5 && git push origin v0.9.5
+    git tag v0.10.0 && git push origin v0.10.0
     ```
-11. **Confirm it's live.** The artifact usually appears within 15–30 minutes. Check the package page at [central.sonatype.com/artifact/com.stract-api/stract-api](https://central.sonatype.com/artifact/com.stract-api/stract-api), which lists the published versions, or browse the raw files at `repo1.maven.org/maven2/com/stract-api/stract-api/`. Untick the `release` profile when you're done so later builds don't try to sign.
+13. **Confirm it's live.** The artifact usually appears within 15–30 minutes. Check the package page at [central.sonatype.com/artifact/com.stract-api/stract-api](https://central.sonatype.com/artifact/com.stract-api/stract-api), which lists the published versions, or browse the raw files at `repo1.maven.org/maven2/com/stract-api/stract-api/`. Untick the `release` profile when you're done so later builds don't try to sign.
 
 ## Support
 
