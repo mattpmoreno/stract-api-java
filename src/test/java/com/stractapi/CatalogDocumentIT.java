@@ -2,7 +2,9 @@ package com.stractapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.stractapi.client.ApiClient;
@@ -10,9 +12,11 @@ import com.stractapi.client.ApiException;
 import com.stractapi.model.Catalog;
 import com.stractapi.model.CreateCatalogRequest;
 import com.stractapi.model.Document;
+import com.stractapi.model.UploadDocumentFromUrlRequest;
 import com.stractapi.model.UploadTextDocumentRequest;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -125,6 +129,82 @@ class CatalogDocumentIT {
         }
         assertEquals(id, removed);
         assertFalse(documents.getUserDocuments().stream().anyMatch(d -> id.equals(d.getId())));
+    }
+
+    // The source file is uploaded the normal way, then its presigned link is fed back into
+    // uploadDocumentFromUrl to create a second document in the same catalog.
+    @Test
+    void documentFromUrlInACatalogLifecycle() throws ApiException, IOException {
+        CatalogApi catalogs = new CatalogApi(client);
+        DocumentApi documents = new DocumentApi(client);
+
+        Catalog catalog = catalogs.createCatalog(
+                new CreateCatalogRequest().name(TestClient.uniqueName("url-catalog")));
+        UUID catalogId = catalog.getId();
+        try {
+            Document source = documents.uploadDocument(catalogId, writeTemp(
+                    TestClient.uniqueName("url-source") + ".txt", "Four hamburgers and a shake"));
+            String link = documents.getDocumentLink(source.getId()).getLink();
+            assertTrue(link.startsWith("https"));
+
+            Document copy = documents.uploadDocumentFromUrl(catalogId,
+                    new UploadDocumentFromUrlRequest()
+                            .url(URI.create(link))
+                            .filename(TestClient.uniqueName("url-copy") + ".txt"));
+            assertNotNull(copy.getId());
+            assertNotEquals(source.getId(), copy.getId());
+            assertEquals(catalogId, copy.getCatalogId());
+            assertEquals("txt", copy.getExtension().replaceFirst("^\\.", ""));
+            assertEquals(Set.of(source.getId(), copy.getId()), ids(documents, catalogId));
+            assertTrue(documents.getDocumentLink(copy.getId()).getLink().startsWith("http"));
+        } finally {
+            // Deleting the catalog also deletes both documents.
+            catalogs.deleteCatalog(catalogId);
+        }
+        assertFalse(catalogs.getCatalogs().stream().anyMatch(c -> catalogId.equals(c.getId())));
+    }
+
+    @Test
+    void documentFromUrlWithoutACatalogLifecycle() throws ApiException, IOException {
+        DocumentApi documents = new DocumentApi(client);
+        Document source = documents.uploadDocumentNoCatalog(writeTemp(
+                TestClient.uniqueName("url-source") + ".txt", "Six hamburgers"));
+        Document copy = null;
+        try {
+            String link = documents.getDocumentLink(source.getId()).getLink();
+            assertTrue(link.startsWith("https"));
+
+            copy = documents.uploadDocumentFromUrlNoCatalog(new UploadDocumentFromUrlRequest()
+                    .url(URI.create(link))
+                    .filename(TestClient.uniqueName("url-copy") + ".txt"));
+            assertNotNull(copy.getId());
+            assertNotEquals(source.getId(), copy.getId());
+            assertEquals("txt", copy.getExtension().replaceFirst("^\\.", ""));
+            UUID copyId = copy.getId();
+            assertTrue(documents.getUserDocuments().stream()
+                    .anyMatch(d -> copyId.equals(d.getId())));
+        } finally {
+            if (copy != null) {
+                documents.deleteDocument(copy.getId());
+            }
+            documents.deleteDocument(source.getId());
+        }
+        UUID sourceId = source.getId();
+        UUID copyId = copy.getId();
+        Set<UUID> remaining = documents.getUserDocuments().stream()
+                .map(Document::getId).collect(Collectors.toSet());
+        assertFalse(remaining.contains(sourceId));
+        assertFalse(remaining.contains(copyId));
+    }
+
+    // The spec says only https URLs are accepted.
+    @Test
+    void documentFromUrlRejectsNonHttpsUrl() {
+        DocumentApi documents = new DocumentApi(client);
+        ApiException e = assertThrows(ApiException.class, () ->
+                documents.uploadDocumentFromUrlNoCatalog(new UploadDocumentFromUrlRequest()
+                        .url(URI.create("http://stract-api.com/file.txt"))));
+        assertEquals(400, e.getCode());
     }
 
     private File writeTemp(String name, String content) throws IOException {
